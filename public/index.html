@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Upload</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f9;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+
+      h1 {
+        color: #333;
+      }
+
+      form {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+      }
+
+      label {
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      input[type="file"] {
+        display: block;
+      }
+
+      button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+
+      #imagePreview {
+        margin-top: 20px;
+        max-width: 100%;
+        max-height: 300px;
+        border: 2px dashed #ddd;
+        padding: 10px;
+        border-radius: 8px;
+        display: none;
+      }
+
+      #message {
+        margin-top: 15px;
+        color: #555;
+      }
+
+      #loader {
+        display: none;
+        margin-left: 10px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #007bff;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Upload Image</h1>
+    <form
+      id="uploadForm"
+      action="/api/image/upload"
+      method="POST"
+      enctype="multipart/form-data"
+    >
+      <label for="image">Choose an image:</label>
+      <input type="file" id="image" name="image" accept="image/*" required />
+      <img id="imagePreview" alt="Image Preview" />
+      <button type="submit" id="submitButton">Upload</button>
+      <div id="loader"></div>
+    </form>
+    <p id="message"></p>
+
+    <script>
+      const form = document.getElementById("uploadForm");
+      const message = document.getElementById("message");
+      const imageInput = document.getElementById("image");
+      const imagePreview = document.getElementById("imagePreview");
+      const submitButton = document.getElementById("submitButton");
+      const loader = document.getElementById("loader");
+
+      // Show image preview when a file is selected
+      imageInput.addEventListener("change", () => {
+        const file = imageInput.files[0];
+
+        if (file) {
+          const reader = new FileReader();
+
+          reader.onload = (e) => {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = "block";
+          };
+
+          reader.readAsDataURL(file);
+        } else {
+          imagePreview.style.display = "none";
+          imagePreview.src = "";
+        }
+      });
+
+      // Handle form submission
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const formData = new FormData(form);
+
+        // Disable the button and show loader
+        submitButton.disabled = true;
+        loader.style.display = "inline-block";
+
+        try {
+          const response = await fetch(form.action, {
+            method: form.method,
+            body: formData,
+          });
+
+          const result = await response.json();
+
+          console.log("Server Response:", result); // Log backend response
+
+          if (response.ok) {
+            message.textContent = result.message;
+            message.style.color = "green";
+
+            console.log("Posting URL to parent:", result.data);
+            console.log("url >>>", result.data);
+
+            // Send the Cloudinary URL to the parent window
+            window.opener.postMessage(
+              { type: "imageUploaded", url: result.data }, // Ensure data contains the URL
+              "*"
+            );
+          } else {
+            message.textContent = result.message || "Error uploading image.";
+            message.style.color = "red";
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          message.textContent = "Error: " + error.message;
+          message.style.color = "red";
+        } finally {
+          // Re-enable the button and hide loader
+          submitButton.disabled = false;
+          loader.style.display = "none";
+        }
+      });
+    </script>
+  </body>
+</html>
